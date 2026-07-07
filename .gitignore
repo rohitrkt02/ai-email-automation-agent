@@ -6,3 +6,4 @@ __pycache__/
 .pytest_cache/
 *.json
 !app/mcp/mcp_config.json
+config/token.json
