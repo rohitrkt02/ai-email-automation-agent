@@ -1,0 +1,8 @@
+venv/
+.env
+logs/*.log
+data/*.db
+__pycache__/
+.pytest_cache/
+*.json
+!app/mcp/mcp_config.json
