@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # Service 1: PostgreSQL Database Engine Container
+  db_server:
+    image: postgres:15-alpine
+    container_name: email_agent_postgres_container
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      # Note: Docker internal setup ke liye special characters safe mapping format me rakhe hain
+      POSTGRES_PASSWORD: 7860220452_rohit
+      POSTGRES_DB: email_agent_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_volume:/var/lib/postgresql/data
+    networks:
+      - agent_bridge_network
+
+  # Service 2: Our FastAPI Application Engine
+  api_agent:
+    build: .
+    container_name: email_agent_api_container
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - GEMINI_API_KEY=${AQ.Ab8RN6LpXrsRKQGnU85V-ZwlKzyAG9J0AjXSmQCeRwOMHyLyHg}
+      # CRITICAL DOCKER ROUTING: Localhost ki jagah service link name 'db_server' target hoga
+      - DATABASE_URL=postgresql://postgres:7860220452_rohit@db_server:5432/email_agent_db
+    depends_on:
+      - db_server
+    volumes:
+      - .:/workspace
+    networks:
+      - agent_bridge_network
+
+volumes:
+  postgres_data_volume:
+
+networks:
+  agent_bridge_network:
+    driver: bridge
