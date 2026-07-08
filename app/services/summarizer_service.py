@@ -1,50 +1,33 @@
 import json
 from semantic_kernel.contents.chat_history import ChatHistory
+from app.mcp.mcp_server import MCPServer
 
 class EmailSummarizerService:
+    """
+    Extracts summary, action items and deadlines using filesystem schemas via MCP.
+    As per Phase 6, 8 & 9 Roadmap Requirements.
+    """
     def __init__(self, kernel):
         self.kernel = kernel
         self.chat_service = kernel.get_service()
+        self.mcp = MCPServer()  # Injecting MCP Server Tools
 
     async def summarize_email(self, sender: str, subject: str, body: str) -> dict:
-        """
-        Analyzes long emails and returns structured summary, action items, and deadlines.
-        As per Phase 6 Roadmap Requirements.
-        """
-        prompt = f"""
-You are an expert Executive Assistant. Your job is to read long or short emails and provide a structured summary.
-
-Analyze the following email:
-- From: {sender}
-- Subject: {subject}
-- Body: {body}
-
-Extract the details and provide your response in raw JSON format with exactly these keys:
-- "summary": (A clear 1-2 sentence overview of the email content)
-- "action_items": (A Python list/array of explicit tasks or next steps expected from us)
-- "deadline": (Any specific date/time mentioned, or "None Specified" if not found)
-- "important_points": (A Python list/array of key insights, facts, or critical highlights)
-
-Response must be pure JSON only, without any markdown formatting wrappers like ```json or trailing text.
-"""
+        # Load prompt template dynamically using MCP Tool
+        template = self.mcp.load_prompt("summary")
+        prompt = template.format(sender=sender, subject=subject, body=body)
+        
         chat_history = ChatHistory()
         chat_history.add_user_message(prompt)
 
         try:
-            raw_response = await self.chat_service.get_chat_message_content(
-                chat_history=chat_history,
-                settings=None,
-                kernel=self.kernel
-            )
-            
+            raw_response = await self.chat_service.get_chat_message_content(chat_history=chat_history)
             cleaned_response = raw_response.strip().replace("```json", "").replace("```", "").strip()
-            result_json = json.loads(cleaned_response)
-            return result_json
-            
+            return json.loads(cleaned_response)
         except Exception as e:
-            print(f"[ERROR] Summarization failed for email from {sender}: {e}")
+            self.mcp.save_log("error", f"Summarization failed: {e}")
             return {
-                "summary": "Failed to generate summary due to processing exception.",
+                "summary": "Fallback activated.",
                 "action_items": [],
                 "deadline": "None Specified",
                 "important_points": []
